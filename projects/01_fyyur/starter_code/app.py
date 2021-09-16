@@ -292,19 +292,18 @@ def artists():
 
 @app.route("/artists/search", methods=["POST"])
 def search_artists():
-    # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
+    # implement search on artists with partial string search. Ensure it is case-insensitive.
     # seach for "A" should return "Guns N Petals", "Matt Quevado", and "The Wild Sax Band".
     # search for "band" should return "The Wild Sax Band".
+    artists = Artist.query.filter(
+        Artist.name.ilike(f"%{request.form.get('search_term')}%")
+    ).all()
+    print(artists)
     response = {
-        "count": 1,
-        "data": [
-            {
-                "id": 4,
-                "name": "Guns N Petals",
-                "num_upcoming_shows": 0,
-            }
-        ],
+        "count": len(artists),
+        "data": artists,
     }
+
     return render_template(
         "pages/search_artists.html",
         results=response,
@@ -328,13 +327,13 @@ def edit_artist(artist_id):
     form = ArtistForm()
 
     artist = Artist.query.get(artist_id)
-    # TODO: populate form with fields from artist with ID <artist_id>
+    # populate form with fields from artist with ID <artist_id>
     return render_template("forms/edit_artist.html", form=form, artist=artist)
 
 
 @app.route("/artists/<int:artist_id>/edit", methods=["POST"])
 def edit_artist_submission(artist_id):
-    # TODO: take values from the form submitted, and update existing
+    # take values from the form submitted, and update existing
     # artist record with ID <artist_id> using the new attributes
     data = request.form
     try:
