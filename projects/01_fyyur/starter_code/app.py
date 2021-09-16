@@ -23,7 +23,7 @@ moment = Moment(app)
 app.config.from_object("config")
 db = SQLAlchemy(app)
 
-# TODO: connect to a local postgresql database
+# connect to a local postgresql database
 migrate = Migrate(app, db)
 
 # ----------------------------------------------------------------------------#
@@ -61,10 +61,10 @@ class Artist(db.Model):
     seeking_venue = db.Column(db.Boolean)
     seeking_description = db.Column(db.String(120))
 
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
+    # implement any missing fields, as a database migration using Flask-Migrate
 
 
-# TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
+# TODO: Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
 
 # ----------------------------------------------------------------------------#
 # Filters.
@@ -420,7 +420,7 @@ def create_artist_submission():
         db.session.add(artist)
         db.session.commit()
         # on successful db insert, flash success
-        flash("Artist " + request.form["name"] + " was successfully listed!")
+        flash("Artist " + artist.name + " was successfully listed!")
     except:
         db.session.rollback()
         # on unsuccessful db insert, flash an error instead.
