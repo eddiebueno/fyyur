@@ -326,7 +326,7 @@ def show_artist(artist_id):
 @app.route("/artists/<int:artist_id>/edit", methods=["GET"])
 def edit_artist(artist_id):
     form = ArtistForm()
-    print(form.facebook_link)
+
     artist = Artist.query.get(artist_id)
     # TODO: populate form with fields from artist with ID <artist_id>
     return render_template("forms/edit_artist.html", form=form, artist=artist)
@@ -336,6 +336,24 @@ def edit_artist(artist_id):
 def edit_artist_submission(artist_id):
     # TODO: take values from the form submitted, and update existing
     # artist record with ID <artist_id> using the new attributes
+    data = request.form
+    try:
+        artist = Artist.query.get(artist_id)
+        artist.name = data["name"]
+        artist.city = data["city"]
+        artist.state = data["state"]
+        artist.phone = data["phone"]
+        artist.genres = data["genres"]
+        artist.image_link = data["image_link"]
+        artist.facebook_link = data["facebook_link"]
+        artist.website_link = data["website_link"]
+        artist.seeking_venue = bool(data.get("seeking_venue"))
+        artist.seeking_description = data["seeking_description"]
+        db.session.commit()
+    except:
+        db.session.rollback()
+    finally:
+        db.session.close()
 
     return redirect(url_for("show_artist", artist_id=artist_id))
 
@@ -386,7 +404,7 @@ def create_artist_submission():
     # TODO: modify data to be the data object returned from db insertion
     # data = request.get_json()
     data = request.form
-    print("data:", data)
+
     try:
         artist = Artist(
             name=data["name"],
@@ -397,7 +415,7 @@ def create_artist_submission():
             image_link=data["image_link"],
             facebook_link=data["facebook_link"],
             website_link=data["website_link"],
-            seeking_venue=data.get("seeking_venue"),
+            seeking_venue=bool(data.get("seeking_venue")),
             seeking_description=data["seeking_description"],
         )
         db.session.add(artist)
