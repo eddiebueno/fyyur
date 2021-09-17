@@ -45,6 +45,7 @@ class Venue(db.Model):
     website_link = db.Column(db.String(120))
     seeking_talent = db.Column(db.Boolean)
     seeking_description = db.Column(db.String(120))
+    shows = db.relationship("Show", backref="artist", lazy=True)
 
     # implement any missing fields, as a database migration using Flask-Migrate
 
@@ -63,11 +64,20 @@ class Artist(db.Model):
     website_link = db.Column(db.String(120))
     seeking_venue = db.Column(db.Boolean)
     seeking_description = db.Column(db.String(120))
+    shows = db.relationship("Show", backref="venue", lazy=True)
 
     # implement any missing fields, as a database migration using Flask-Migrate
 
 
 # TODO: Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
+class Show(db.Model):
+    __tablename__ = "Show"
+
+    id = db.Column(db.Integer, primary_key=True)
+    artist_id = db.Column(db.Integer, db.ForeignKey("Artist.id"), nullable=False)
+    venue_id = db.Column(db.Integer, db.ForeignKey("Venue.id"), nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False)
+
 
 # ----------------------------------------------------------------------------#
 # Filters.
@@ -267,13 +277,11 @@ def create_venue_submission():
             seeking_talent=bool(data.get("seeking_talent")),
             website_link=data["website_link"],
         )
-        print("Made a venue")
         db.session.add(venue)
         db.session.commit()
         # on successful db insert, flash success
         flash("Venue " + venue.name + " was successfully listed!")
     except:
-        print("error")
         db.session.rollback()
         # on unsuccessful db insert, flash an error instead.
         flash("An error occurred. Venue " + data["name"] + " could not be listed.")
@@ -328,6 +336,8 @@ def search_artists():
     artists = Artist.query.filter(
         Artist.name.ilike(f"%{request.form.get('search_term')}%")
     ).all()
+
+    # TODO: include upcoming shows
 
     response = {
         "count": len(artists),
@@ -407,7 +417,7 @@ def edit_venue(venue_id):
     print(venue.name)
     print(form.name)
 
-    # TODO: populate form with values from venue with ID <venue_id>
+    # populate form with values from venue with ID <venue_id>
     return render_template("forms/edit_venue.html", form=form, venue=venue)
 
 
@@ -415,6 +425,24 @@ def edit_venue(venue_id):
 def edit_venue_submission(venue_id):
     # TODO: take values from the form submitted, and update existing
     # venue record with ID <venue_id> using the new attributes
+    data = request.form
+    try:
+        venue = Venue.query.get(venue_id)
+        venue.name = data["name"]
+        venue.city = data["city"]
+        venue.state = data["state"]
+        venue.phone = data["phone"]
+        venue.genres = data.get("genres")
+        venue.image_link = data["image_link"]
+        venue.facebook_link = data["facebook_link"]
+        venue.website_link = data["website_link"]
+        venue.seeking_talent = bool(data.get("seeking_talent"))
+        venue.seeking_description = data["seeking_description"]
+        db.session.commit()
+    except:
+        db.session.rollback()
+    finally:
+        db.session.close()
     return redirect(url_for("show_venue", venue_id=venue_id))
 
 
