@@ -42,6 +42,9 @@ class Venue(db.Model):
     phone = db.Column(db.String(120))
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
+    website_link = db.Column(db.String(120))
+    seeking_talent = db.Column(db.Boolean)
+    seeking_description = db.Column(db.String(120))
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
@@ -123,7 +126,7 @@ def venues():
 
 @app.route("/venues/search", methods=["POST"])
 def search_venues():
-    # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
+    # implement search on artists with partial string search. Ensure it is case-insensitive.
     # seach for Hop should return "The Musical Hop".
     # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
     venues = Venue.query.filter(
@@ -145,7 +148,7 @@ def search_venues():
 @app.route("/venues/<int:venue_id>")
 def show_venue(venue_id):
     # shows the venue page with the given venue_id
-    # TODO: replace with real venue data from the venues table, using venue_id
+    # replace with real venue data from the venues table, using venue_id
     data1 = {
         "id": 1,
         "name": "The Musical Hop",
@@ -231,7 +234,7 @@ def show_venue(venue_id):
         "past_shows_count": 1,
         "upcoming_shows_count": 1,
     }
-    data = list(filter(lambda d: d["id"] == venue_id, [data1, data2, data3]))[0]
+
     data = Venue.query.get(venue_id)
     return render_template("pages/show_venue.html", venue=data)
 
@@ -248,8 +251,8 @@ def create_venue_form():
 
 @app.route("/venues/create", methods=["POST"])
 def create_venue_submission():
-    # TODO: insert form data as a new Venue record in the db, instead
-    # TODO: modify data to be the data object returned from db insertion
+    # insert form data as a new Venue record in the db, instead
+    # modify data to be the data object returned from db insertion
     data = request.form
     try:
         venue = Venue(
@@ -260,14 +263,19 @@ def create_venue_submission():
             phone=data["phone"],
             image_link=data["image_link"],
             facebook_link=data["facebook_link"],
+            seeking_description=data["seeking_description"],
+            seeking_talent=bool(data.get("seeking_talent")),
+            website_link=data["website_link"],
         )
+        print("Made a venue")
         db.session.add(venue)
         db.session.commit()
         # on successful db insert, flash success
         flash("Venue " + venue.name + " was successfully listed!")
     except:
+        print("error")
         db.session.rollback()
-        # TODO: on unsuccessful db insert, flash an error instead.
+        # on unsuccessful db insert, flash an error instead.
         flash("An error occurred. Venue " + data["name"] + " could not be listed.")
     finally:
         db.session.close()
@@ -366,20 +374,23 @@ def edit_artist_submission(artist_id):
 @app.route("/venues/<int:venue_id>/edit", methods=["GET"])
 def edit_venue(venue_id):
     form = VenueForm()
-    venue = {
-        "id": 1,
-        "name": "The Musical Hop",
-        "genres": ["Jazz", "Reggae", "Swing", "Classical", "Folk"],
-        "address": "1015 Folsom Street",
-        "city": "San Francisco",
-        "state": "CA",
-        "phone": "123-123-1234",
-        "website": "https://www.themusicalhop.com",
-        "facebook_link": "https://www.facebook.com/TheMusicalHop",
-        "seeking_talent": True,
-        "seeking_description": "We are on the lookout for a local artist to play every two weeks. Please call us.",
-        "image_link": "https://images.unsplash.com/photo-1543900694-133f37abaaa5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=400&q=60",
-    }
+
+    venue = Venue.query.get(venue_id)
+    form.name.value = venue.name
+    form.address.value = venue.address
+    form.city.value = venue.city
+    form.state.value = venue.state
+    form.phone.value = venue.phone
+    form.website_link.value = venue.website_link
+    form.facebook_link.value = venue.facebook_link
+    form.seeking_description.value = venue.seeking_description
+    form.seeking_talent.checked = venue.seeking_talent
+    form.image_link.value = venue.image_link
+
+    form = VenueForm(obj=venue)
+    print(venue.name)
+    print(form.name)
+
     # TODO: populate form with values from venue with ID <venue_id>
     return render_template("forms/edit_venue.html", form=form, venue=venue)
 
