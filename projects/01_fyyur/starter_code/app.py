@@ -98,37 +98,26 @@ def index():
 
 @app.route("/venues")
 def venues():
-    # TODO: replace with real venues data.
-    #       num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
-    data = [
-        {
-            "city": "San Francisco",
-            "state": "CA",
-            "venues": [
-                {
-                    "id": 1,
-                    "name": "The Musical Hop",
-                    "num_upcoming_shows": 0,
-                },
-                {
-                    "id": 3,
-                    "name": "Park Square Live Music & Coffee",
-                    "num_upcoming_shows": 1,
-                },
-            ],
-        },
-        {
-            "city": "New York",
-            "state": "NY",
-            "venues": [
-                {
-                    "id": 2,
-                    "name": "The Dueling Pianos Bar",
-                    "num_upcoming_shows": 0,
-                }
-            ],
-        },
+    data = []
+
+    venues = Venue.query.all()
+    venues_locations = set()
+    [
+        venues_locations.add((v.city, v.state))
+        for v in venues
+        if (v.city, v.state) not in venues_locations
     ]
+
+    data = list(data)
+
+    for loc in venues_locations:
+        city = loc[0]
+        state = loc[1]
+        location_venues = []
+        for v in venues:
+            if v.city == city and v.state == state:
+                location_venues.append(v)
+        data.append({"city": city, "state": state, "venues": location_venues})
     return render_template("pages/venues.html", areas=data)
 
 
@@ -244,6 +233,7 @@ def show_venue(venue_id):
         "upcoming_shows_count": 1,
     }
     data = list(filter(lambda d: d["id"] == venue_id, [data1, data2, data3]))[0]
+    data = Venue.query.get(venue_id)
     return render_template("pages/show_venue.html", venue=data)
 
 
@@ -261,11 +251,28 @@ def create_venue_form():
 def create_venue_submission():
     # TODO: insert form data as a new Venue record in the db, instead
     # TODO: modify data to be the data object returned from db insertion
+    data = request.form
+    try:
+        venue = Venue(
+            name=data["name"],
+            city=data["city"],
+            state=data["state"],
+            address=data["address"],
+            phone=data["phone"],
+            image_link=data["image_link"],
+            facebook_link=data["facebook_link"],
+        )
+        db.session.add(venue)
+        db.session.commit()
+        # on successful db insert, flash success
+        flash("Venue " + venue.name + " was successfully listed!")
+    except:
+        db.session.rollback()
+        # TODO: on unsuccessful db insert, flash an error instead.
+        flash("An error occurred. Venue " + data["name"] + " could not be listed.")
+    finally:
+        db.session.close()
 
-    # on successful db insert, flash success
-    flash("Venue " + request.form["name"] + " was successfully listed!")
-    # TODO: on unsuccessful db insert, flash an error instead.
-    # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
     # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
     return render_template("pages/home.html")
 
@@ -400,7 +407,7 @@ def create_artist_form():
 def create_artist_submission():
     # called upon submitting the new artist listing form
     # insert form data as a new Artist in the db, instead
-    # TODO: modify data to be the data object returned from db insertion
+    # modify data to be the data object returned from db insertion
     # data = request.get_json()
     data = request.form
 
