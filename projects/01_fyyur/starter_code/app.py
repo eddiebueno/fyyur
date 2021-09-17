@@ -46,7 +46,7 @@ class Venue(db.Model):
     seeking_talent = db.Column(db.Boolean)
     seeking_description = db.Column(db.String(120))
 
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
+    # implement any missing fields, as a database migration using Flask-Migrate
 
 
 class Artist(db.Model):
@@ -288,10 +288,26 @@ def create_venue_submission():
 def delete_venue(venue_id):
     # TODO: Complete this endpoint for taking a venue_id, and using
     # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
+    venue = Venue.query.get(venue_id)
 
+    if not venue:
+        return redirect(url_for("index"))
+
+    error = False
+    try:
+        db.session.delete(venue)
+        db.session.commit()
+    except:
+        error = True
+        db.session.rollback()
+    finally:
+        db.session.close()
+    if error:
+        flash(f"Error occured when deleting venue")
+        abort(500)
+    return jsonify({"deleted": True, "url": url_for("venues")})
     # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
     # clicking that button delete it from the db then redirect the user to the homepage
-    return None
 
 
 #  Artists
