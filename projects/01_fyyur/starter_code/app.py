@@ -35,7 +35,7 @@ app.config.from_object("config")
 db = SQLAlchemy(app)
 
 # connect to a local postgresql database
-migrate = Migrate(app, db)
+migrate = Migrate(app, db, compare_type=True)
 
 # ----------------------------------------------------------------------------#
 # Models.
@@ -90,8 +90,12 @@ class Show(db.Model):
     __tablename__ = "Show"
 
     id = db.Column(db.Integer, primary_key=True)
-    artist_id = db.Column(db.Integer, db.ForeignKey("Artist.id"), nullable=False)
-    venue_id = db.Column(db.Integer, db.ForeignKey("Venue.id"), nullable=False)
+    artist_id = db.Column(
+        db.Integer, db.ForeignKey("Artist.id", ondelete="CASCADE"), nullable=False
+    )
+    venue_id = db.Column(
+        db.Integer, db.ForeignKey("Venue.id", ondelete="CASCADE"), nullable=False
+    )
     start_time = db.Column(db.DateTime, nullable=False)
 
     def __repr__(self):
@@ -199,7 +203,7 @@ def show_venue(venue_id):
     data.past_shows = past_shows
     data.upcoming_shows_count = len(upcoming_shows)
     data.past_shows_count = len(past_shows)
-
+    print(data.genres)
     return render_template("pages/show_venue.html", venue=data)
 
 
@@ -249,7 +253,7 @@ def create_venue_submission():
 
 @app.route("/venues/<venue_id>", methods=["DELETE"])
 def delete_venue(venue_id):
-    # TODO: Complete this endpoint for taking a venue_id, and using
+    # Complete this endpoint for taking a venue_id, and using
     # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
     venue = Venue.query.get(venue_id)
     redirect_url = url_for("venues")
@@ -309,8 +313,28 @@ def search_artists():
 def show_artist(artist_id):
     # shows the artist page with the given artist_id
     # replace with real artist data from the artist table, using artist_id
-    # TODO: include upcoming shows
+    now = datetime.now()
+    upcoming_shows = (
+        Show.query.filter(Show.artist_id == artist_id, Show.start_time > now)
+        .join(Venue)
+        .all()
+    )
+    past_shows = (
+        Show.query.filter(Show.artist_id == artist_id, Show.start_time < now)
+        .join(Venue)
+        .all()
+    )
+    for show in upcoming_shows + past_shows:
+        show.start_time = str(show.start_time)
+        show.venue_name = show.venue.name
+        show.venue_image_link = show.venue.image_link
+
     data = Artist.query.get(artist_id)
+    data.upcoming_shows = upcoming_shows
+    data.past_shows = past_shows
+    data.upcoming_shows_count = len(upcoming_shows)
+    data.past_shows_count = len(past_shows)
+    print(data.genres)
     return render_template("pages/show_artist.html", artist=data)
 
 
@@ -405,6 +429,7 @@ def create_artist_submission():
     data = request.form
 
     try:
+        print(data.getlist("genres"))
         artist = Artist(
             name=data["name"],
             city=data["city"],
@@ -417,6 +442,7 @@ def create_artist_submission():
             seeking_venue=bool(data.get("seeking_venue")),
             seeking_description=data["seeking_description"],
         )
+        print(artist.genres)
         db.session.add(artist)
         db.session.commit()
         # on successful db insert, flash success
