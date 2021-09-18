@@ -5,7 +5,17 @@
 import json, sys
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for
+from flask import (
+    Flask,
+    render_template,
+    request,
+    Response,
+    flash,
+    redirect,
+    url_for,
+    jsonify,
+    abort,
+)
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
@@ -47,7 +57,7 @@ class Venue(db.Model):
     website_link = db.Column(db.String(120))
     seeking_talent = db.Column(db.Boolean)
     seeking_description = db.Column(db.String(120))
-    shows = db.relationship("Show", backref="venue", lazy=True)
+    shows = db.relationship("Show", backref="venue", cascade="all,delete", lazy=True)
 
     # implement any missing fields, as a database migration using Flask-Migrate
     def __repr__(self):
@@ -307,23 +317,24 @@ def delete_venue(venue_id):
     # TODO: Complete this endpoint for taking a venue_id, and using
     # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
     venue = Venue.query.get(venue_id)
-
-    if not venue:
-        return redirect(url_for("index"))
-
+    redirect_url = url_for("venues")
     error = False
+    if not venue:
+        return jsonify({"deleted": error, "url": redirect_url})
+
     try:
         db.session.delete(venue)
         db.session.commit()
     except:
-        error = True
+        error = False
+        redirect_url = url_for("show_venue", venue_id=venue_id)
         db.session.rollback()
-    finally:
-        db.session.close()
-    if error:
         flash(f"Error occured when deleting venue")
         abort(500)
-    return jsonify({"deleted": True, "url": url_for("venues")})
+    finally:
+        db.session.close()
+
+    return jsonify({"deleted": error, "url": url_for("venues")})
     # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
     # clicking that button delete it from the db then redirect the user to the homepage
 
@@ -493,54 +504,11 @@ def create_artist_submission():
 @app.route("/shows")
 def shows():
     # displays list of shows at /shows
-    # TODO: replace with real venues data.
-    data = [
-        {
-            "venue_id": 1,
-            "venue_name": "The Musical Hop",
-            "artist_id": 4,
-            "artist_name": "Guns N Petals",
-            "artist_image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80",
-            "start_time": "2019-05-21T21:30:00.000Z",
-        },
-        {
-            "venue_id": 3,
-            "venue_name": "Park Square Live Music & Coffee",
-            "artist_id": 5,
-            "artist_name": "Matt Quevedo",
-            "artist_image_link": "https://images.unsplash.com/photo-1495223153807-b916f75de8c5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=334&q=80",
-            "start_time": "2019-06-15T23:00:00.000Z",
-        },
-        {
-            "venue_id": 3,
-            "venue_name": "Park Square Live Music & Coffee",
-            "artist_id": 6,
-            "artist_name": "The Wild Sax Band",
-            "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-            "start_time": "2035-04-01T20:00:00.000Z",
-        },
-        {
-            "venue_id": 3,
-            "venue_name": "Park Square Live Music & Coffee",
-            "artist_id": 6,
-            "artist_name": "The Wild Sax Band",
-            "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-            "start_time": "2035-04-08T20:00:00.000Z",
-        },
-        {
-            "venue_id": 3,
-            "venue_name": "Park Square Live Music & Coffee",
-            "artist_id": 6,
-            "artist_name": "The Wild Sax Band",
-            "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-            "start_time": "2035-04-15T20:00:00.000Z",
-        },
-    ]
+    # replace with real venues data.
+
     data = []
     shows = Show.query.join(Venue).join(Artist).all()
     for show in shows:
-        print(show.artist)
-        print(show.venue)
         data.append(
             {
                 "venue_id": show.venue_id,
@@ -565,7 +533,7 @@ def create_shows():
 @app.route("/shows/create", methods=["POST"])
 def create_show_submission():
     # called to create new shows in the db, upon submitting new show listing form
-    # TODO: insert form data as a new Show record in the db, instead
+    # insert form data as a new Show record in the db, instead
 
     data = request.form
 
@@ -578,7 +546,6 @@ def create_show_submission():
         db.session.add(show)
         db.session.commit()
         # on successful db insert, flash success
-        print("committed")
         flash("Show was successfully listed!")
     except:
         db.session.rollback()
