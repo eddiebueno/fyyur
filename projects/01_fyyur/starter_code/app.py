@@ -138,10 +138,11 @@ def venues():
 
     venues = Venue.query.all()
     venues_locations = set()
-        
+
     # Find unique city and state  for each venue
     for v in venues:
-        venues_locations.add((v.city, v.state)) if (v.city, v.state) not in venues_locations
+        if (v.city, v.state) not in venues_locations:
+            venues_locations.add((v.city, v.state))
 
     data = list(data)
 
