@@ -138,14 +138,14 @@ def venues():
 
     venues = Venue.query.all()
     venues_locations = set()
-    [
-        venues_locations.add((v.city, v.state))
-        for v in venues
-        if (v.city, v.state) not in venues_locations
-    ]
+        
+    # Find unique city and state  for each venue
+    for v in venues:
+        venues_locations.add((v.city, v.state)) if (v.city, v.state) not in venues_locations
 
     data = list(data)
 
+    # combine all venues that share the same city and state
     for loc in venues_locations:
         city = loc[0]
         state = loc[1]
